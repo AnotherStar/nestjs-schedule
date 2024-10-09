@@ -7,6 +7,7 @@ import { CronCallback, CronJob, CronJobParams } from 'cron';
 import { v4 } from 'uuid';
 import { CronOptions } from './decorators/cron.decorator';
 import { SchedulerRegistry } from './scheduler.registry';
+import { CronJobContext } from './context';
 
 type TargetHost = { target: Function };
 type TimeoutHost = { timeout: number };
@@ -22,8 +23,12 @@ type CronJobOptions = TargetHost & CronOptionsHost & RefHost<CronJob>;
 
 @Injectable()
 export class SchedulerOrchestrator
-  implements OnApplicationBootstrap, OnApplicationShutdown {
-  private readonly cronJobs: Record<string, CronJobOptions> = {};
+  implements OnApplicationBootstrap, OnApplicationShutdown
+{
+  private readonly cronJobs: Record<
+    string,
+    CronJobOptions & { context: CronJobContext }
+  > = {};
   private readonly timeouts: Record<string, TimeoutOptions> = {};
   private readonly intervals: Record<string, IntervalOptions> = {};
 
@@ -66,28 +71,30 @@ export class SchedulerOrchestrator
   mountCron() {
     const cronKeys = Object.keys(this.cronJobs);
     cronKeys.forEach((key) => {
-      const { options, target } = this.cronJobs[key];
+      const { options, target, context } = this.cronJobs[key];
       const cronJob = CronJob.from({
         ...options,
         onTick: target as CronCallback<null, false>,
-        start: !options.disabled
-      });
+        start: !options.disabled,
+      }) as CronJob<null, null> & { context: CronJobContext };
+
+      Object.assign(cronJob, { context });
 
       this.cronJobs[key].ref = cronJob;
-      this.schedulerRegistry.addCronJob(key, cronJob);
+      this.schedulerRegistry.addCronJob(key, cronJob, context);
     });
   }
 
   clearTimeouts() {
-    this.schedulerRegistry.getTimeouts().forEach((key) =>
-      this.schedulerRegistry.deleteTimeout(key),
-    );
+    this.schedulerRegistry
+      .getTimeouts()
+      .forEach((key) => this.schedulerRegistry.deleteTimeout(key));
   }
 
   clearIntervals() {
-    this.schedulerRegistry.getIntervals().forEach((key) =>
-      this.schedulerRegistry.deleteInterval(key),
-    );
+    this.schedulerRegistry
+      .getIntervals()
+      .forEach((key) => this.schedulerRegistry.deleteInterval(key));
   }
 
   closeCronJobs() {
@@ -113,11 +120,13 @@ export class SchedulerOrchestrator
   addCron(
     methodRef: Function,
     options: CronOptions & Record<'cronTime', CronJobParams['cronTime']>,
+    context: CronJobContext,
   ) {
     const name = options.name || v4();
     this.cronJobs[name] = {
       target: methodRef,
       options,
+      context,
     };
   }
 }

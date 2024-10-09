@@ -4,6 +4,14 @@ import { CronExpression } from '../../lib/enums';
 
 @Injectable({ scope: Scope.REQUEST })
 export class RequestScopedCronService {
-  @Cron(CronExpression.EVERY_MINUTE)
+  @Cron(
+    CronExpression.EVERY_MINUTE,
+    {
+      name: '',
+    },
+    {
+      runOnServerNames: ['test'],
+    },
+  )
   handleCron() {}
 }

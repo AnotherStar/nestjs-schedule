@@ -7,10 +7,13 @@ import { TimeoutMetadata } from './interfaces/timeout-metadata.interface';
 import {
   SCHEDULER_NAME,
   SCHEDULER_TYPE,
+  SCHEDULE_CRON_CONTEXT,
   SCHEDULE_CRON_OPTIONS,
   SCHEDULE_INTERVAL_OPTIONS,
   SCHEDULE_TIMEOUT_OPTIONS,
 } from './schedule.constants';
+import { CronContext } from 'cron';
+import { CronJobContext } from './context';
 
 @Injectable()
 export class SchedulerMetadataAccessor {
@@ -36,6 +39,10 @@ export class SchedulerMetadataAccessor {
     target: Function,
   ): (CronOptions & Record<'cronTime', string | Date | any>) | undefined {
     return this.getMetadata(SCHEDULE_CRON_OPTIONS, target);
+  }
+
+  getCronContext(target: Function): CronJobContext | undefined {
+    return this.getMetadata(SCHEDULE_CRON_CONTEXT, target);
   }
 
   private getMetadata<T>(key: string, target: Function): T | undefined {

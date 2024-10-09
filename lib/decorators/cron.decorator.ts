@@ -2,19 +2,21 @@ import { applyDecorators, SetMetadata } from '@nestjs/common';
 import { CronJobParams } from 'cron';
 import { SchedulerType } from '../enums/scheduler-type.enum';
 import {
+  SCHEDULE_CRON_CONTEXT,
   SCHEDULE_CRON_OPTIONS,
   SCHEDULER_NAME,
   SCHEDULER_TYPE,
 } from '../schedule.constants';
+import { CronJobContext } from '../context';
 
 /**
  * @ref https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/cron/index.d.ts
  */
-export type CronOptions = {
+export type CronOptions<T = unknown> = {
   /**
    * Specify the name of your cron job. This will allow to inject your cron job reference through `@InjectCronRef`.
    */
-  name?: string;
+  name: string;
 
   /**
    * Specify the timezone for the execution. This will modify the actual time relative to your timezone. If the timezone is invalid, an error is thrown. You can check all timezones available at [Moment Timezone Website](http://momentjs.com/timezone/). Probably don't use both ```timeZone``` and ```utcOffset``` together or weird things may happen.
@@ -35,8 +37,8 @@ export type CronOptions = {
    * @default false
    */
   disabled?: boolean;
-} & // make timeZone & utcOffset mutually exclusive
-(| {
+} & ( // make timeZone & utcOffset mutually exclusive
+  | {
       timeZone?: string;
       utcOffset?: never;
     }
@@ -53,7 +55,8 @@ export type CronOptions = {
  */
 export function Cron(
   cronTime: CronJobParams['cronTime'],
-  options: CronOptions = {},
+  options: CronOptions,
+  context: CronJobContext,
 ): MethodDecorator {
   const name = options?.name;
   return applyDecorators(
@@ -61,6 +64,7 @@ export function Cron(
       ...options,
       cronTime,
     }),
+    SetMetadata(SCHEDULE_CRON_CONTEXT, context),
     SetMetadata(SCHEDULER_NAME, name),
     SetMetadata(SCHEDULER_TYPE, SchedulerType.CRON),
   );

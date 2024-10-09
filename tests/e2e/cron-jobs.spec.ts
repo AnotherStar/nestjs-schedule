@@ -7,6 +7,7 @@ import { SchedulerRegistry } from '../../lib/scheduler.registry';
 import { AppModule } from '../src/app.module';
 import { CronService } from '../src/cron.service';
 import { nullPrototypeObjectProvider } from '../src/null-prototype-object.provider';
+import { CronJobContext } from '../../lib/context';
 
 const deleteAllRegisteredJobsExceptOne = (
   registry: SchedulerRegistry,
@@ -47,8 +48,10 @@ describe('Cron', () => {
     registry['logger'].error = jest.fn();
     const job = new CronJob(CronExpression.EVERY_SECOND, () => {
       throw new Error('ERROR IN CRONJOB GOT CATCHED');
+    }) as CronJob<null, null> & { context: CronJobContext };
+    registry.addCronJob('THROWS_EXCEPTION_INSIDE', job, {
+      runOnServerNames: [],
     });
-    registry.addCronJob('THROWS_EXCEPTION_INSIDE', job);
     job.start();
     clock.tick('1');
     expect(registry['logger'].error).toHaveBeenCalledWith(
@@ -124,6 +127,14 @@ describe('Cron', () => {
     await app.init();
     const registry = app.get(SchedulerRegistry);
     expect(registry.getCronJob('EXECUTES_EVERY_SECOND')).not.toBeUndefined();
+  });
+
+  it('should has context for cron job', async () => {
+    await app.init();
+    const registry = app.get(SchedulerRegistry);
+    expect(
+      registry.getCronJob('EXECUTES_EVERY_SECOND').context.runOnServerNames,
+    ).not.toBeUndefined();
   });
 
   it(`should add dynamic cron job`, async () => {

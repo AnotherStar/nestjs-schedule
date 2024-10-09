@@ -68,9 +68,15 @@ export class ScheduleExplorer implements OnModuleInit {
           return;
         }
         const cronMetadata = this.metadataAccessor.getCronMetadata(methodRef);
+        const cronContext = this.metadataAccessor.getCronContext(methodRef);
+
         const cronFn = this.wrapFunctionInTryCatchBlocks(methodRef, instance);
 
-        return this.schedulerOrchestrator.addCron(cronFn, cronMetadata!);
+        return this.schedulerOrchestrator.addCron(
+          cronFn,
+          cronMetadata!,
+          cronContext!,
+        );
       }
       case SchedulerType.TIMEOUT: {
         if (!this.moduleOptions.timeouts) {
